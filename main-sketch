@@ -1,4 +1,25 @@
 
+/*
+  Written by Jon Webb <jon@jon-webb.com>
+  MIT Licence etc.
+  
+  An Arduino Sketch which drives an Arduino nano to capture goals scored by players at a Foosball table.
+  
+  It is designed to run on Arduino Nano's also works on the cheap chinese clones
+  
+  Connect 2 ldr's to 5v and Analog Pin 5 and Analog Pin 6, and 2 * 10k Ohm resistors to from Analog pins 5 & 6 to GND
+  Connect 2 Keyes Laser Diodes the - pin to GND and the S pin to Digital PIN 2
+  
+  App boots into a Dormant mode, it can then have 3 states - ACTIVE, CALIBRATION, DORMANT
+  
+  Active mode can be enabled by sending the character "a" to the serial port
+  Calibration mode can be enabled by sending the character "c" to the serial port
+  Dormant mode can be enabled by sending the character "x" to the serial port
+ 
+  More documentation to come.  
+  
+*/
+
 // constants
 // Arduino Pin Configuration
 const int PIN_LASER_DIODE    = 2;
@@ -19,10 +40,10 @@ const int DELAY_CALIBRATION  = 1000;
 const int CMD_RESET_COUNTER    = 114; // r
 const int CMD_DIODE_ON         = 49;  // 1;
 const int CMD_DIODE_OFF        = 48;  // 0;
-const int CMD_ACTIVE           = 97;  //a
-const int CMD_CALIBRATE        = 99;  //c
-const int CMD_EXIT             = 120; //x
-const int CMD_DEBUG_TOGGLE     = 100; //d
+const int CMD_ACTIVE           = 97;  // a
+const int CMD_CALIBRATE        = 99;  // c
+const int CMD_EXIT             = 120; // x
+const int CMD_DEBUG_TOGGLE     = 100; // d
 
 // Internal App State
 const int STATE_DORMANT     = 0;
