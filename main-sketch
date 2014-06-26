@@ -1,0 +1,171 @@
+
+// constants
+// Arduino Pin Configuration
+const int PIN_LASER_DIODE    = 2;
+const int PIN_LDR_A          = 6;
+const int PIN_LDR_B          = 5;
+
+// Light Thresholds
+const int LIGHT_THRESHOLD_A    = 1001;
+const int LIGHT_THRESHOLD_B    = 1001;
+
+// Delay Thresholds
+const int DELAY_DORMANT      = 1000;
+const int DELAY_ACTIVE       = 100;
+const int DELAY_ACTIVE_WAIT  = 15000;
+const int DELAY_CALIBRATION  = 1000;
+
+// Commands
+const int CMD_RESET_COUNTER    = 114; // r
+const int CMD_DIODE_ON         = 49;  // 1;
+const int CMD_DIODE_OFF        = 48;  // 0;
+const int CMD_ACTIVE           = 97; //a
+const int CMD_CALIBRATE        = 99; //c
+const int CMD_EXIT             = 120; //x
+const int CMD_DEBUG_TOGGLE     = 100;
+
+// Internal App State
+const int STATE_DORMANT     = 0;
+const int STATE_ACTIVE      = 1;
+const int STATE_CALIBRATION = 2;
+
+int DELAY_CURRENT = DELAY_DORMANT;
+int STATE = 0;
+int DEBUG = 0;
+
+void setup () {
+  pinMode( PIN_LDR_A, INPUT );
+  pinMode( PIN_LDR_B, INPUT );
+  Serial.begin(115200);
+  Serial.println("READY");
+  setDormantMode();
+}
+
+void switchLaserOff() {
+   analogWrite(PIN_LASER_DIODE, 0); // TURN LASER OFF
+}
+
+void switchLaserOn () {
+  analogWrite(PIN_LASER_DIODE,128); // TURN LASER ON
+}
+
+void handleActiveMode () {
+  boolean trippedA = analogRead(PIN_LDR_A) < LIGHT_THRESHOLD_A;
+  boolean trippedB = analogRead(PIN_LDR_B) < LIGHT_THRESHOLD_B;
+  boolean hasTripped = (trippedA || trippedB);
+  
+  if(trippedA) {
+    Serial.println("TRIP:A");
+  } else if(trippedB) {
+    Serial.println("TRIP:B");
+  }
+  
+  
+  DELAY_CURRENT = (hasTripped) ? DELAY_ACTIVE_WAIT : DELAY_ACTIVE ;
+}
+
+void setActiveMode() {
+  echoDebug("MODE:ACTIVE");
+  setDelay(DELAY_ACTIVE);
+  switchLaserOn();
+}
+
+void switchState (int mode) {
+   switch (mode) {
+      case STATE_CALIBRATION:
+         setCalibrationMode();
+      break;
+      case STATE_ACTIVE:
+         setActiveMode();
+      break;
+      case STATE_DORMANT:
+         setDormantMode();
+      break;      
+
+   }
+   
+   STATE = mode;
+}
+
+void setDelay(int requiredDelay) {
+  DELAY_CURRENT = requiredDelay;
+}
+
+int getDelay() {
+  return DELAY_CURRENT;
+}
+
+void setDormantMode() {
+  echoDebug("MODE:DORMANT");
+  setDelay(DELAY_DORMANT);
+  switchLaserOff();
+}
+
+void setCalibrationMode() {
+  echoDebug("MODE:CALUBRATION");
+  setDelay(DELAY_CALIBRATION);
+  switchLaserOn();
+}
+
+void handleCalibration () {
+  int pinAValue = analogRead(PIN_LDR_A);
+  int pinBValue = analogRead(PIN_LDR_B);
+  int isCalibrated = pinAValue > LIGHT_THRESHOLD_A && pinBValue > LIGHT_THRESHOLD_B;
+  String message = (isCalibrated) ? "GOOD :: " : "BAD :: ";
+  Serial.println(message + "A=" + String(pinAValue) + ", B=" + String(pinBValue));
+}
+
+void echo(String message) {
+   Serial.println(message);  
+}
+
+void echoDebug (String message) {
+  if(DEBUG) {
+    Serial.println(message);
+  }
+}
+
+void processIncomingCommands () {
+ if(Serial.available() > 0) {
+
+   int incomingByte = Serial.read();
+   
+   echoDebug(String(incomingByte));
+   
+   switch (incomingByte) {
+    case CMD_DIODE_OFF:
+      switchLaserOff();
+      break;
+    case CMD_DIODE_ON:
+      switchLaserOn();
+      break;
+    case CMD_ACTIVE:
+      switchState(STATE_ACTIVE);
+      break;
+    case CMD_CALIBRATE:
+      switchState(STATE_CALIBRATION);
+      break;
+    case CMD_EXIT:
+      switchState(STATE_DORMANT);
+      break; 
+    case CMD_DEBUG_TOGGLE:
+      DEBUG = !DEBUG;
+      Serial.println("DEBUG:" + String(DEBUG));
+      break;    
+   }
+  } 
+}
+
+void loop () {  
+  
+  if(STATE == STATE_CALIBRATION) {
+    handleCalibration();
+  }
+
+  if(STATE == STATE_ACTIVE) {
+    handleActiveMode();
+  }
+  
+  processIncomingCommands();
+  delay(DELAY_CURRENT) ;
+}
